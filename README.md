@@ -14,3 +14,6 @@ Add a @require tag with the path to the local file that you want to include in t
 // @require       file://C:/Users/[USERNAME]/Documents/myscript.js
 Finally enable local file access.
 最后启用本地文件访问。
+
+## 外部资源如何引用
+[[油猴脚本开发指南]外部资源引用_油猴脚本token-CSDN博客](https://blog.csdn.net/lihengdao666/article/details/113355118)
