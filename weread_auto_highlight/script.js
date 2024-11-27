@@ -3,13 +3,13 @@
 
 (function () {
     'use strict';
-    const log = (...args) => console.log("weread-ch:", ...args);
-    log("weread_auto_highlight begin init")
+    const log = (...args) => console.log("weread_ext:", ...args);
     const toolXpath = '//*[@id="routerView"]/div/div[1]/div[2]/div/div/div[2]/div[12]/div[2]/div/button[2]';
     const toolMarkXpath = '//*[@id="routerView"]/div/div[1]/div[2]/div/div/div[2]/div[12]/div[2]/div/button[2]';
     const removeMakrXpath = '//*[@id="routerView"]/div/div[1]/div[2]/div/div/div[2]/div[12]/div[2]/div/button[5]';
     const copyMarkXpath = '//*[@id="routerView"]/div/div[1]/div[2]/div/div/div[2]/div[12]/div[2]/div/button[1]';
     const writeXpath = '//*[@id="routerView"]/div/div[1]/div[2]/div/div/div[2]/div[12]/div[2]/div/button[6]';
+    const settingTemplateXpath = '//*[@id="routerView"]/div/div[1]/div[2]/div/div/div[5]/button[7]';
     let toolElementExit = false;
 
     // 创建一个  ToolElements 实例
@@ -81,7 +81,7 @@
         const toolMarkElement = document.evaluate(toolMarkXpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
         const removeMarkElement = document.evaluate(removeMakrXpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
         if (toolMarkElement && !removeMarkElement) {
-            toolMarkElement.click();
+            setTimeout(() => toolMarkElement.click(), 500);
             log("划线")
         } else if (removeMarkElement) {
             log("已经划线了")
@@ -89,6 +89,49 @@
             log("划线失败")
         }
     };
+
+    const tryAppendSettingButton = function () {
+        // 获取settingTemplateXpath元素
+        const settingTemplateElement = document.evaluate(settingTemplateXpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+
+        if (settingTemplateElement) {
+            const existingSettingIcon = document.getElementById('weread_ext');
+            if (!existingSettingIcon) {
+                // 创建Setting按钮
+                const settingButton = document.createElement('button');
+                settingButton.innerHTML = '设置';
+                settingButton.style.cssText = `
+                    padding: 8px 16px;
+                    margin: 8px 0;
+                    border: 1px solid #ddd;
+                    border-radius: 4px;
+                    background: #fff;
+                    color: #333;
+                    font-size: 14px;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                `;
+                settingButton.addEventListener('mouseover', () => {
+                    settingButton.style.background = '#f5f5f5';
+                });
+                settingButton.addEventListener('mouseout', () => {
+                    settingButton.style.background = '#fff';
+                });
+
+                // 设置Setting按钮的icon
+                const settingIcon = document.createElement('i');
+                settingIcon.id = 'weread_ext';
+                settingIcon.className = 'setting-icon'; // Add appropriate class for the icon
+                settingButton.appendChild(settingIcon);
+
+                // 将Setting按钮插入到settingTemplateElement的后面
+                settingTemplateElement.parentNode.insertBefore(settingButton, settingTemplateElement.nextSibling);
+            }
+        } else {
+            log("settingTemplateXpath element not found");
+        }
+    }
+
     const observer = new MutationObserver((mutations) => {
         const toolElements = new ToolElements();
 
@@ -99,6 +142,10 @@
             };
         }
         const _handleKeyDown = handleKeyDown(toolElements);
+
+
+
+        /* 工具栏相关 */
         if (toolElements.exist && !toolElementExit) {
             log("Found tool element at xpath:", toolXpath);
             /* 快捷键相关 */
@@ -107,10 +154,12 @@
 
             /* 自动划线 */
             onToolElementShow();
-
         } else {
             document.removeEventListener('keydown', _handleKeyDown);
         }
+
+        /* 设置界面 */
+        tryAppendSettingButton();
         toolElementExit = toolElements.exist;
     });
 
@@ -121,8 +170,11 @@
         subtree: true
     };
 
-    // 开始观察文档变化
-    observer.observe(document.body, config);
+    window.onload = function () {
+        // 开始观察文档变化
+        observer.observe(document.body, config);
+        log("weread_auto_highlight begin init")
+    };
     return;
 
 
