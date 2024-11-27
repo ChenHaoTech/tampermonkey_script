@@ -66,6 +66,11 @@
     }
 
     const keydownListener = (e, toolElements) => {
+        // 如果不是keyUp事件则跳过
+        if (e.type !== 'keydown') {
+            log("不是keyup事件，跳过,key:" + e.type);
+            return;
+        }
         const removeMarkElementExists = toolElements.removeMarkElement ? true : false;
         log("Remove mark element exists: " + removeMarkElementExists + ", key:" + e.key);
 
@@ -77,13 +82,16 @@
                 toolElements.toolMarkElement.click();
                 log("Mark tool clicked");
             }
+            e.preventDefault();
 
         } else if (e.key === ToolElementsKeys.delete && removeMarkElementExists) {
             toolElements.removeMarkElement.click();
             log("Remove mark tool clicked");
+            e.preventDefault();
         } else if (e.key === ToolElementsKeys.copy && toolElements.copyMarkElement) {
             toolElements.copyMarkElement.click();
             log("Copy mark tool clicked");
+            e.preventDefault();
         } else if (e.key === ToolElementsKeys.write && toolElements.writeElement) {
             toolElements.writeElement.click();
             log("Write tool clicked");
@@ -124,15 +132,18 @@
 
     const autoMark = function () {
         const toolMarkElement = document.evaluate(toolMarkXpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
-        const removeMarkElement = document.evaluate(removeMakrXpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
-        if (toolMarkElement && !removeMarkElement) {
-            setTimeout(() => toolMarkElement.click(), 500);
-            log("划线")
-        } else if (removeMarkElement) {
-            log("已经划线了")
-        } else {
-            log("划线失败")
-        }
+
+        setTimeout(() => {
+            const removeMarkElement = document.evaluate(removeMakrXpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+            if (toolMarkElement && !removeMarkElement) {
+                toolMarkElement.click();
+            } else if (removeMarkElement) {
+                log("已经划线了")
+            } else {
+                log("划线失败")
+            }
+        }, 500);
+        log("划线")
     };
 
     const tryAppendSettingButton = function () {
@@ -208,7 +219,6 @@
             if (!originToolElementExit && toolElementExit) {
                 modifyTitleContent(toolElements);
                 /* 快捷键相关 */
-                document.removeEventListener('keydown', _handleKeyDown);
                 document.addEventListener('keydown', _handleKeyDown);
 
 
