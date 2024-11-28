@@ -1,4 +1,3 @@
-// ==/UserScript==
 // ==UserScript==
 // @name         x-Spotlight
 // @namespace    http://tampermonkey.net/
@@ -8,24 +7,45 @@
 // @match        https://twitter.com/*
 // @match        https://x.com/*
 // @icon         data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==
-// @grant        GM_notification
-
+// @grant        GM_registerMenuCommand
+// @grant        GM_unregisterMenuCommand
+// @grant        GM_getValue
+// @grant        GM_setValue
 // ==/UserScript==
 
 
 (function () {
     'use strict';
 
-
-
-    // 配置参数
-    const CONFIG = {
+    // 首先定义默认配置
+    const DEFAULT_CONFIG = {
         LIKE_RATIO_THRESHOLD: 0.01,     // 1% 点赞率阈值
         COMMENT_RATIO_THRESHOLD: 0.001,  // 0.1% 评论率阈值
         RETWEET_THRESHOLD: 3,           // 转发数阈值
         VIEW_THRESHOLD: 100,            // 浏览数阈值
         CHECK_INTERVAL: 1000,           // 检查间隔（毫秒）
     };
+
+    // 然后是加载配置的函数
+    const loadConfig = () => {
+        const savedConfig = {};
+        Object.keys(DEFAULT_CONFIG).forEach(key => {
+            savedConfig[key] = GM_getValue(key, DEFAULT_CONFIG[key]);
+        });
+        return savedConfig;
+    };
+
+    // 修改 CONFIG 的定义
+    const CONFIG = loadConfig();
+
+    // 添加保存配置的函数
+    const saveConfig = () => {
+        Object.keys(CONFIG).forEach(key => {
+            GM_setValue(key, CONFIG[key]);
+        });
+        logger.info('Configuration saved');
+    };
+
     // 日志方法
     const logger = {
         _format: (level, ...args) => {
@@ -155,11 +175,107 @@
             subtree: true
         });
     };
+    // 添加配置菜单
+    const registerConfigMenus = () => {
+        // 创建对话框
+        const dialog = document.createElement('dialog');
+        dialog.id = 'x-spotlight-config';
+        dialog.style.cssText = `
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            background: white;
+        `;
+
+        // 创建配置表单
+        const form = document.createElement('form');
+        form.innerHTML = `
+            <h2 style="margin-top:0">X-Spotlight 配置</h2>
+            <div style="margin-bottom:15px">
+                <label>点赞率阈值 (%)</label>
+                <input type="number" id="like-ratio" value="${CONFIG.LIKE_RATIO_THRESHOLD * 100}" min="0" step="0.1">
+            </div>
+            <div style="margin-bottom:15px">
+                <label>评论率阈值 (%)</label>
+                <input type="number" id="comment-ratio" value="${CONFIG.COMMENT_RATIO_THRESHOLD * 100}" min="0" step="0.1">
+            </div>
+            <div style="margin-bottom:15px">
+                <label>最小转发数</label>
+                <input type="number" id="retweet-threshold" value="${CONFIG.RETWEET_THRESHOLD}" min="0">
+            </div>
+            <div style="margin-bottom:15px">
+                <label>最小浏览数</label>
+                <input type="number" id="view-threshold" value="${CONFIG.VIEW_THRESHOLD}" min="0">
+            </div>
+            <div style="display:flex;justify-content:space-between;margin-top:20px">
+                <button type="button" id="reset-btn">重置默认值</button>
+                <div>
+                    <button type="button" id="cancel-btn">取消</button>
+                    <button type="submit">保存</button>
+                </div>
+            </div>
+        `;
+
+        dialog.appendChild(form);
+        document.body.appendChild(dialog);
+
+        // 事件处理
+        const handleSubmit = (e) => {
+            e.preventDefault();
+            CONFIG.LIKE_RATIO_THRESHOLD = parseFloat(document.getElementById('like-ratio').value) / 100;
+            CONFIG.COMMENT_RATIO_THRESHOLD = parseFloat(document.getElementById('comment-ratio').value) / 100;
+            CONFIG.RETWEET_THRESHOLD = parseInt(document.getElementById('retweet-threshold').value);
+            CONFIG.VIEW_THRESHOLD = parseInt(document.getElementById('view-threshold').value);
+            saveConfig();
+            refreshPosts();
+            dialog.close();
+        };
+
+        const handleReset = () => {
+            if (confirm("确定要重置所有配置到默认值吗？")) {
+                Object.assign(CONFIG, DEFAULT_CONFIG);
+                saveConfig();
+                refreshPosts();
+                dialog.close();
+            }
+        };
+
+        form.addEventListener('submit', handleSubmit);
+        document.getElementById('reset-btn').addEventListener('click', handleReset);
+        document.getElementById('cancel-btn').addEventListener('click', () => dialog.close());
+
+        // 添加打开配置的按钮
+        const configButton = document.createElement('button');
+        configButton.textContent = 'X-Spotlight 配置';
+        configButton.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 9999;
+            padding: 8px 16px;
+            background: #1da1f2;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+        `;
+        configButton.addEventListener('click', () => dialog.showModal());
+        document.body.appendChild(configButton);
+    };
+
+    // 刷新所有帖子的处理
+    const refreshPosts = () => {
+        document.querySelectorAll('article[role="article"]').forEach(post => {
+            post.dataset.processed = '';
+            processPost(post);
+        });
+    };
 
     // 初始化
     const init = () => {
         logger.info('init');
         injectStyles();
+        registerConfigMenus();
         logger.info('injectStyles success');
         observeTimeline();
         logger.info('observeTimeline success');
