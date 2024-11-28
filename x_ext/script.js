@@ -23,6 +23,7 @@
         LIKE_RATIO_THRESHOLD: 0.01,     // 1% 点赞率阈值
         COMMENT_RATIO_THRESHOLD: 0.001,  // 0.1% 评论率阈值
         RETWEET_THRESHOLD: 3,           // 转发数阈值
+        VIEW_THRESHOLD: 100,            // 浏览数阈值
         CHECK_INTERVAL: 1000,           // 检查间隔（毫秒）
     };
     // 日志方法
@@ -109,7 +110,12 @@
         const likeRatio = views ? likes / views : 0;
         const commentRatio = views ? comments / views : 0;
 
-        // 应用高亮
+        // 应用高亮 - 添加浏览数判断条件
+        if (views <= CONFIG.VIEW_THRESHOLD) {
+            logger.info('views <= CONFIG.VIEW_THRESHOLD: ' + CONFIG.VIEW_THRESHOLD);
+            return;
+        }
+
         if (likeRatio > CONFIG.LIKE_RATIO_THRESHOLD) {
             postElement.classList.add('quality-post');
             // 根据比率设置边框粗细
