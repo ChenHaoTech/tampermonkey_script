@@ -36,7 +36,7 @@
         warn: (...args) => console.warn(...logger._format('WARN', ...args)),
         error: (...args) => console.error(...logger._format('ERROR', ...args)),
     };
-    logger.info('logger init success');    
+    logger.info('logger init success');
 
     // 样式注入
     const injectStyles = () => {
@@ -78,26 +78,32 @@
     const processPost = (postElement) => {
         // 防止重复处理
         if (postElement.dataset.processed) return;
-        postElement.dataset.processed = 'true';
-
         // 获取指标数据
-        const metrics = postElement.querySelectorAll('[data-testid="analyticsButton"]');
-        if (!metrics.length) {
-            logger.info('No metrics found for post');
+        // Get the parent element containing all metrics
+        const metricsContainer = postElement.querySelector('[role="group"][aria-label]');
+        if (!metricsContainer) {
+            logger.info('No metrics container found for post');
             return;
         }
+        logger.info('begin processPost');
 
         let views = 0, likes = 0, comments = 0, retweets = 0;
 
-        metrics.forEach(metric => {
-            const text = metric.textContent;
-            const number = parseNumberText(text);
+        // Parse the aria-label which contains all metrics
+        const metricsText = metricsContainer.getAttribute('aria-label');
+        if (metricsText) {
+            const matches = {
+                replies: metricsText.match(/(\d+)\s+repl(y|ies)/i),
+                reposts: metricsText.match(/(\d+)\s+repost/i),
+                likes: metricsText.match(/(\d+)\s+like/i),
+                views: metricsText.match(/(\d+)\s+view/i)
+            };
 
-            if (metric.closest('[aria-label*="View"]')) views = number;
-            if (metric.closest('[aria-label*="Like"]')) likes = number;
-            if (metric.closest('[aria-label*="Reply"]')) comments = number;
-            if (metric.closest('[aria-label*="Retweet"]')) retweets = number;
-        }); 
+            comments = matches.replies ? parseInt(matches.replies[1]) : 0;
+            retweets = matches.reposts ? parseInt(matches.reposts[1]) : 0;
+            likes = matches.likes ? parseInt(matches.likes[1]) : 0;
+            views = matches.views ? parseInt(matches.views[1]) : 0;
+        }
 
         // 计算比率
         const likeRatio = views ? likes / views : 0;
@@ -120,6 +126,7 @@
                 commentButton.classList.add('highlight-comments');
             }
         }
+        postElement.dataset.processed = 'true';
     };
 
     // 监视 DOM 变化
@@ -147,12 +154,15 @@
     const init = () => {
         logger.info('init');
         injectStyles();
+        logger.info('injectStyles success');
         observeTimeline();
+        logger.info('observeTimeline success');
 
         // 处理已存在的推文
         setInterval(() => {
-            document.querySelectorAll('article:not([data-processed])').forEach(processPost);
+            document.querySelectorAll('article[role="article"]:not([data-processed])').forEach(processPost);
         }, CONFIG.CHECK_INTERVAL);
+        logger.info('setInterval for processPost success');
     };
 
     // 等待页面加载完成
